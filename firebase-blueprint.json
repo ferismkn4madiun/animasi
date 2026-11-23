@@ -1,0 +1,249 @@
+{
+  "entities": {
+    "UserAccount": {
+      "title": "UserAccount",
+      "description": "Akun pengguna aplikasi dengan level akses ADMIN, GURU, atau SISWA.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "email": { "type": "string", "format": "email", "minLength": 3, "maxLength": 160 },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "role": { "type": "string", "enum": ["ADMIN", "GURU", "SISWA"] },
+        "className": { "type": "string", "maxLength": 80 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "displayName", "role", "createdAt", "updatedAt"]
+    },
+    "StaffInvite": {
+      "title": "StaffInvite",
+      "description": "Daftar email guru atau admin yang diizinkan mengelola tugas dan publikasi.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "format": "email", "minLength": 3, "maxLength": 160 },
+        "fullName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "role": { "type": "string", "enum": ["ADMIN", "GURU"] },
+        "addedBy": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "fullName", "role", "addedBy", "createdAt"]
+    },
+    "AnimationClass": {
+      "title": "AnimationClass",
+      "description": "Data kelas dan jurusan SMK Animasi.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "grade": { "type": "string", "enum": ["X", "XI", "XII"] },
+        "major": { "type": "string", "minLength": 2, "maxLength": 60 },
+        "homeroomTeacher": { "type": "string", "maxLength": 120 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "grade", "major", "createdAt"]
+    },
+    "WorkCategory": {
+      "title": "WorkCategory",
+      "description": "Kategori karya animasi siswa.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "minLength": 2, "maxLength": 60 },
+        "slug": { "type": "string", "minLength": 2, "maxLength": 60, "pattern": "^[a-z0-9_\\-]+$" },
+        "description": { "type": "string", "maxLength": 300 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "slug", "createdAt"]
+    },
+    "StudentGroup": {
+      "title": "StudentGroup",
+      "description": "Data kelompok kerja siswa jurusan Animasi.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "minLength": 2, "maxLength": 100 },
+        "className": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "leaderName": { "type": "string", "minLength": 2, "maxLength": 100 },
+        "members": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "className", "leaderName", "members", "createdAt", "updatedAt"]
+    },
+    "StudentRecord": {
+      "title": "StudentRecord",
+      "description": "Data profil siswa jurusan Animasi yang dikelola guru dan admin.",
+      "type": "object",
+      "properties": {
+        "nis": { "type": "string", "minLength": 2, "maxLength": 30 },
+        "fullName": { "type": "string", "minLength": 2, "maxLength": 100 },
+        "className": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "groupName": { "type": "string", "maxLength": 100 },
+        "email": { "type": "string", "maxLength": 160 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["nis", "fullName", "className", "createdAt", "updatedAt"]
+    },
+    "Submission": {
+      "title": "Submission",
+      "description": "Pengumpulan tugas karya siswa beserta file, nilai, dan status peninjauan.",
+      "type": "object",
+      "properties": {
+        "trackingCode": { "type": "string", "minLength": 6, "maxLength": 32, "pattern": "^[A-Z0-9\\-]+$" },
+        "groupName": { "type": "string", "minLength": 2, "maxLength": 100 },
+        "leaderName": { "type": "string", "minLength": 2, "maxLength": 100 },
+        "members": { "type": "array" },
+        "className": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "title": { "type": "string", "minLength": 2, "maxLength": 160 },
+        "category": { "type": "string", "minLength": 2, "maxLength": 60 },
+        "description": { "type": "string", "minLength": 5, "maxLength": 2000 },
+        "fileUrl": { "type": "string", "maxLength": 500 },
+        "fileName": { "type": "string", "maxLength": 255 },
+        "fileType": { "type": "string", "maxLength": 100 },
+        "fileSize": { "type": "number" },
+        "externalLink": { "type": "string", "maxLength": 500 },
+        "status": { "type": "string", "enum": ["Menunggu", "Diterima", "Revisi", "Selesai"] },
+        "score": { "type": "number" },
+        "revisionNote": { "type": "string", "maxLength": 1000 },
+        "isPublished": { "type": "boolean" },
+        "publishedWorkId": { "type": "string", "maxLength": 128 },
+        "submitterUid": { "type": "string", "maxLength": 128 },
+        "submittedAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "trackingCode",
+        "groupName",
+        "leaderName",
+        "members",
+        "className",
+        "title",
+        "category",
+        "description",
+        "fileUrl",
+        "fileName",
+        "fileType",
+        "fileSize",
+        "externalLink",
+        "status",
+        "revisionNote",
+        "isPublished",
+        "publishedWorkId",
+        "submitterUid",
+        "submittedAt",
+        "updatedAt"
+      ]
+    },
+    "SubmissionStatus": {
+      "title": "SubmissionStatus",
+      "description": "Proyeksi status pengumpulan tugas berdasarkan kode tracking tanpa data file privat.",
+      "type": "object",
+      "properties": {
+        "trackingCode": { "type": "string", "minLength": 6, "maxLength": 32, "pattern": "^[A-Z0-9\\-]+$" },
+        "title": { "type": "string", "minLength": 2, "maxLength": 160 },
+        "groupName": { "type": "string", "minLength": 2, "maxLength": 100 },
+        "className": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "category": { "type": "string", "minLength": 2, "maxLength": 60 },
+        "status": { "type": "string", "enum": ["Menunggu", "Diterima", "Revisi", "Selesai"] },
+        "score": { "type": "number" },
+        "revisionNote": { "type": "string", "maxLength": 1000 },
+        "isPublished": { "type": "boolean" },
+        "publishedWorkId": { "type": "string", "maxLength": 128 },
+        "submittedAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "trackingCode",
+        "title",
+        "groupName",
+        "className",
+        "category",
+        "status",
+        "revisionNote",
+        "isPublished",
+        "publishedWorkId",
+        "submittedAt",
+        "updatedAt"
+      ]
+    },
+    "PublishedWork": {
+      "title": "PublishedWork",
+      "description": "Karya siswa yang telah disetujui guru untuk ditampilkan di galeri publikasi online.",
+      "type": "object",
+      "properties": {
+        "submissionId": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "minLength": 2, "maxLength": 160 },
+        "groupName": { "type": "string", "minLength": 2, "maxLength": 100 },
+        "leaderName": { "type": "string", "minLength": 2, "maxLength": 100 },
+        "members": { "type": "array" },
+        "className": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "category": { "type": "string", "minLength": 2, "maxLength": 60 },
+        "description": { "type": "string", "minLength": 5, "maxLength": 2500 },
+        "thumbnailUrl": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "coverUrl": { "type": "string", "maxLength": 500 },
+        "mediaType": { "type": "string", "enum": ["image", "video", "embed"] },
+        "mediaUrl": { "type": "string", "maxLength": 500 },
+        "externalLink": { "type": "string", "maxLength": 500 },
+        "isVisible": { "type": "boolean" },
+        "isFeatured": { "type": "boolean" },
+        "publishedAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "submissionId",
+        "title",
+        "groupName",
+        "leaderName",
+        "members",
+        "className",
+        "category",
+        "description",
+        "thumbnailUrl",
+        "coverUrl",
+        "mediaType",
+        "mediaUrl",
+        "externalLink",
+        "isVisible",
+        "isFeatured",
+        "publishedAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": {
+      "schema": { "$ref": "#/entities/UserAccount" },
+      "description": "Profil dan peran akses pengguna (ADMIN, GURU, SISWA)."
+    },
+    "/staff_invites/{inviteId}": {
+      "schema": { "$ref": "#/entities/StaffInvite" },
+      "description": "Email guru/admin yang diizinkan mengakses dashboard."
+    },
+    "/classes/{classId}": {
+      "schema": { "$ref": "#/entities/AnimationClass" },
+      "description": "Master data kelas/jurusan SMK Animasi."
+    },
+    "/categories/{categoryId}": {
+      "schema": { "$ref": "#/entities/WorkCategory" },
+      "description": "Master data kategori karya animasi."
+    },
+    "/groups/{groupId}": {
+      "schema": { "$ref": "#/entities/StudentGroup" },
+      "description": "Master data kelompok siswa."
+    },
+    "/students/{studentId}": {
+      "schema": { "$ref": "#/entities/StudentRecord" },
+      "description": "Master data siswa jurusan Animasi."
+    },
+    "/submissions/{submissionId}": {
+      "schema": { "$ref": "#/entities/Submission" },
+      "description": "Data lengkap pengumpulan tugas siswa."
+    },
+    "/submission_statuses/{trackingCode}": {
+      "schema": { "$ref": "#/entities/SubmissionStatus" },
+      "description": "Proyeksi status pengumpulan berdasarkan kode tracking."
+    },
+    "/published_works/{workId}": {
+      "schema": { "$ref": "#/entities/PublishedWork" },
+      "description": "Karya siswa yang telah disetujui untuk galeri publikasi online."
+    }
+  }
+}

@@ -1,0 +1,367 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function isBootstrappedAdmin() {
+      return isSignedIn() && request.auth.token.email == 'feri.smkn4madiun@gmail.com';
+    }
+
+    function userDocExists() {
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function userRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isAdmin() {
+      return isBootstrappedAdmin() || (userDocExists() && userRole() == 'ADMIN');
+    }
+
+    function isGuruOrAdmin() {
+      return isBootstrappedAdmin() || (userDocExists() && userRole() in ['ADMIN', 'GURU']);
+    }
+
+    function isValidString(val, minLen, maxLen) {
+      return val is string && val.size() >= minLen && val.size() <= maxLen;
+    }
+
+    function isValidStringList(arr, minLen, maxLen, itemMax) {
+      return arr is list && arr.size() >= minLen && arr.size() <= maxLen && arr[0] is string && arr[0].size() >= 1 && arr[0].size() <= itemMax;
+    }
+
+    function isValidUserAccount(data) {
+      return data.keys().hasAll(['uid', 'email', 'displayName', 'role', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'email', 'displayName', 'role', 'className', 'createdAt', 'updatedAt'])
+        && isValidId(data.uid)
+        && isValidString(data.email, 3, 160)
+        && isValidString(data.displayName, 1, 120)
+        && data.role in ['ADMIN', 'GURU', 'SISWA']
+        && (!('className' in data) || isValidString(data.className, 0, 80))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidStaffInvite(data) {
+      return data.keys().hasAll(['email', 'fullName', 'role', 'addedBy', 'createdAt'])
+        && data.keys().hasOnly(['email', 'fullName', 'role', 'addedBy', 'createdAt'])
+        && isValidString(data.email, 3, 160)
+        && isValidString(data.fullName, 1, 120)
+        && data.role in ['ADMIN', 'GURU']
+        && isValidString(data.addedBy, 1, 128)
+        && data.createdAt is timestamp;
+    }
+
+    function isValidAnimationClass(data) {
+      return data.keys().hasAll(['name', 'grade', 'major', 'createdAt'])
+        && data.keys().hasOnly(['name', 'grade', 'major', 'homeroomTeacher', 'createdAt'])
+        && isValidString(data.name, 2, 80)
+        && data.grade in ['X', 'XI', 'XII']
+        && isValidString(data.major, 2, 60)
+        && (!('homeroomTeacher' in data) || isValidString(data.homeroomTeacher, 0, 120))
+        && data.createdAt is timestamp;
+    }
+
+    function isValidWorkCategory(data) {
+      return data.keys().hasAll(['name', 'slug', 'createdAt'])
+        && data.keys().hasOnly(['name', 'slug', 'description', 'createdAt'])
+        && isValidString(data.name, 2, 60)
+        && data.slug is string && data.slug.size() >= 2 && data.slug.size() <= 60 && data.slug.matches('^[a-z0-9_\\-]+$')
+        && (!('description' in data) || isValidString(data.description, 0, 300))
+        && data.createdAt is timestamp;
+    }
+
+    function isValidStudentGroup(data) {
+      return data.keys().hasAll(['name', 'className', 'leaderName', 'members', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['name', 'className', 'leaderName', 'members', 'createdAt', 'updatedAt'])
+        && isValidString(data.name, 2, 100)
+        && isValidString(data.className, 2, 80)
+        && isValidString(data.leaderName, 2, 100)
+        && isValidStringList(data.members, 1, 15, 100)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidStudentRecord(data) {
+      return data.keys().hasAll(['nis', 'fullName', 'className', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['nis', 'fullName', 'className', 'groupName', 'email', 'createdAt', 'updatedAt'])
+        && isValidString(data.nis, 2, 30)
+        && isValidString(data.fullName, 2, 100)
+        && isValidString(data.className, 2, 80)
+        && (!('groupName' in data) || isValidString(data.groupName, 0, 100))
+        && (!('email' in data) || isValidString(data.email, 0, 160))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidSubmissionShape(data) {
+      return data.keys().hasAll([
+          'trackingCode', 'groupName', 'leaderName', 'members', 'className',
+          'title', 'category', 'description', 'fileUrl', 'fileName', 'fileType',
+          'fileSize', 'externalLink', 'status', 'score', 'revisionNote',
+          'isPublished', 'publishedWorkId', 'submitterUid', 'submittedAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'trackingCode', 'groupName', 'leaderName', 'members', 'className',
+          'title', 'category', 'description', 'fileUrl', 'fileName', 'fileType',
+          'fileSize', 'externalLink', 'status', 'score', 'revisionNote',
+          'isPublished', 'publishedWorkId', 'submitterUid', 'submittedAt', 'updatedAt'
+        ])
+        && data.trackingCode is string && data.trackingCode.size() >= 6 && data.trackingCode.size() <= 32 && data.trackingCode.matches('^[A-Z0-9\\-]+$')
+        && isValidString(data.groupName, 2, 100)
+        && isValidString(data.leaderName, 2, 100)
+        && isValidStringList(data.members, 1, 15, 100)
+        && isValidString(data.className, 2, 80)
+        && isValidString(data.title, 2, 160)
+        && isValidString(data.category, 2, 60)
+        && isValidString(data.description, 5, 2000)
+        && isValidString(data.fileUrl, 0, 500)
+        && isValidString(data.fileName, 0, 255)
+        && isValidString(data.fileType, 0, 100)
+        && data.fileSize is number && data.fileSize >= 0 && data.fileSize <= 104857600
+        && isValidString(data.externalLink, 0, 500)
+        && data.status in ['Menunggu', 'Diterima', 'Revisi', 'Selesai']
+        && (data.score == null || (data.score is number && data.score >= 0 && data.score <= 100))
+        && isValidString(data.revisionNote, 0, 1000)
+        && data.isPublished is bool
+        && isValidString(data.publishedWorkId, 0, 128)
+        && isValidString(data.submitterUid, 0, 128)
+        && data.submittedAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidSubmissionCreate(data) {
+      return isValidSubmissionShape(data)
+        && data.status == 'Menunggu'
+        && data.score == null
+        && data.revisionNote == ''
+        && data.isPublished == false
+        && data.publishedWorkId == ''
+        && (data.fileUrl.size() > 0 || data.externalLink.size() > 0)
+        && data.submittedAt == request.time
+        && data.updatedAt == request.time
+        && ((request.auth == null && data.submitterUid == '') || (isSignedIn() && data.submitterUid == request.auth.uid));
+    }
+
+    function isValidSubmissionStatusShape(data) {
+      return data.keys().hasAll([
+          'trackingCode', 'title', 'groupName', 'className', 'category',
+          'status', 'score', 'revisionNote', 'isPublished', 'publishedWorkId',
+          'submittedAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'trackingCode', 'title', 'groupName', 'className', 'category',
+          'status', 'score', 'revisionNote', 'isPublished', 'publishedWorkId',
+          'submittedAt', 'updatedAt'
+        ])
+        && data.trackingCode is string && data.trackingCode.size() >= 6 && data.trackingCode.size() <= 32 && data.trackingCode.matches('^[A-Z0-9\\-]+$')
+        && isValidString(data.title, 2, 160)
+        && isValidString(data.groupName, 2, 100)
+        && isValidString(data.className, 2, 80)
+        && isValidString(data.category, 2, 60)
+        && data.status in ['Menunggu', 'Diterima', 'Revisi', 'Selesai']
+        && (data.score == null || (data.score is number && data.score >= 0 && data.score <= 100))
+        && isValidString(data.revisionNote, 0, 1000)
+        && data.isPublished is bool
+        && isValidString(data.publishedWorkId, 0, 128)
+        && data.submittedAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidPublishedWork(data) {
+      return data.keys().hasAll([
+          'submissionId', 'title', 'groupName', 'leaderName', 'members',
+          'className', 'category', 'description', 'thumbnailUrl', 'coverUrl',
+          'mediaType', 'mediaUrl', 'externalLink', 'isVisible', 'isFeatured',
+          'publishedAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'submissionId', 'title', 'groupName', 'leaderName', 'members',
+          'className', 'category', 'description', 'thumbnailUrl', 'coverUrl',
+          'mediaType', 'mediaUrl', 'externalLink', 'isVisible', 'isFeatured',
+          'publishedAt', 'updatedAt'
+        ])
+        && isValidString(data.submissionId, 0, 128)
+        && isValidString(data.title, 2, 160)
+        && isValidString(data.groupName, 2, 100)
+        && isValidString(data.leaderName, 2, 100)
+        && isValidStringList(data.members, 1, 15, 100)
+        && isValidString(data.className, 2, 80)
+        && isValidString(data.category, 2, 60)
+        && isValidString(data.description, 5, 2500)
+        && isValidString(data.thumbnailUrl, 1, 500)
+        && isValidString(data.coverUrl, 0, 500)
+        && data.mediaType in ['image', 'video', 'embed']
+        && isValidString(data.mediaUrl, 0, 500)
+        && isValidString(data.externalLink, 0, 500)
+        && data.isVisible is bool
+        && data.isFeatured is bool
+        && data.publishedAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // Connection validation document
+    match /test/connection {
+      allow get: if true;
+    }
+
+    // Users & Roles
+    match /users/{uid} {
+      allow get: if isValidId(uid) && (isOwner(uid) || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isValidId(uid) && isOwner(uid) && isValidUserAccount(incoming())
+        && incoming().uid == uid
+        && incoming().email == request.auth.token.email
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && (
+          (isBootstrappedAdmin() && incoming().role == 'ADMIN') ||
+          incoming().role == 'SISWA' ||
+          (
+            incoming().role in ['ADMIN', 'GURU'] &&
+            exists(/databases/$(database)/documents/staff_invites/$(request.auth.token.email)) &&
+            get(/databases/$(database)/documents/staff_invites/$(request.auth.token.email)).data.role == incoming().role
+          )
+        );
+      allow update: if isValidId(uid) && isValidUserAccount(incoming())
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() ||
+          (isOwner(uid) && incoming().role == existing().role && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'className', 'updatedAt']))
+        );
+      allow delete: if isValidId(uid) && isAdmin();
+    }
+
+    // Staff invites (docId is exact lowercase email)
+    match /staff_invites/{inviteId} {
+      allow get: if isAdmin() || (isSignedIn() && request.auth.token.email == inviteId);
+      allow list: if isAdmin();
+      allow create: if isAdmin() && isValidStaffInvite(incoming()) && incoming().email == inviteId && incoming().createdAt == request.time;
+      allow update: if isAdmin() && isValidStaffInvite(incoming()) && incoming().email == existing().email && incoming().createdAt == existing().createdAt;
+      allow delete: if isAdmin();
+    }
+
+    // Classes (Public read for submission form and gallery filters)
+    match /classes/{classId} {
+      allow get: if isValidId(classId);
+      allow list: if true;
+      allow create: if isValidId(classId) && isGuruOrAdmin() && isValidAnimationClass(incoming()) && incoming().createdAt == request.time;
+      allow update: if isValidId(classId) && isGuruOrAdmin() && isValidAnimationClass(incoming()) && incoming().createdAt == existing().createdAt;
+      allow delete: if isValidId(classId) && isGuruOrAdmin();
+    }
+
+    // Categories (Public read for submission form and gallery filters)
+    match /categories/{categoryId} {
+      allow get: if isValidId(categoryId);
+      allow list: if true;
+      allow create: if isValidId(categoryId) && isGuruOrAdmin() && isValidWorkCategory(incoming()) && incoming().createdAt == request.time;
+      allow update: if isValidId(categoryId) && isGuruOrAdmin() && isValidWorkCategory(incoming()) && incoming().createdAt == existing().createdAt;
+      allow delete: if isValidId(categoryId) && isGuruOrAdmin();
+    }
+
+    // Student Groups (Protected PII)
+    match /groups/{groupId} {
+      allow get: if isValidId(groupId) && isGuruOrAdmin();
+      allow list: if isGuruOrAdmin();
+      allow create: if isValidId(groupId) && isGuruOrAdmin() && isValidStudentGroup(incoming()) && incoming().createdAt == request.time && incoming().updatedAt == request.time;
+      allow update: if isValidId(groupId) && isGuruOrAdmin() && isValidStudentGroup(incoming()) && incoming().createdAt == existing().createdAt && incoming().updatedAt == request.time;
+      allow delete: if isValidId(groupId) && isGuruOrAdmin();
+    }
+
+    // Students (Protected PII)
+    match /students/{studentId} {
+      allow get: if isValidId(studentId) && isGuruOrAdmin();
+      allow list: if isGuruOrAdmin();
+      allow create: if isValidId(studentId) && isGuruOrAdmin() && isValidStudentRecord(incoming()) && incoming().createdAt == request.time && incoming().updatedAt == request.time;
+      allow update: if isValidId(studentId) && isGuruOrAdmin() && isValidStudentRecord(incoming()) && incoming().createdAt == existing().createdAt && incoming().updatedAt == request.time;
+      allow delete: if isValidId(studentId) && isGuruOrAdmin();
+    }
+
+    // Submissions (Private to Guru/Admin and owning student)
+    match /submissions/{submissionId} {
+      allow get: if isValidId(submissionId) && (isGuruOrAdmin() || (isSignedIn() && existing().submitterUid == request.auth.uid));
+      allow list: if isGuruOrAdmin() || (isSignedIn() && existing().submitterUid == request.auth.uid);
+      allow create: if isValidId(submissionId) && isValidSubmissionCreate(incoming());
+      allow update: if isValidId(submissionId) && isValidSubmissionShape(incoming())
+        && incoming().trackingCode == existing().trackingCode
+        && incoming().submitterUid == existing().submitterUid
+        && incoming().submittedAt == existing().submittedAt
+        && incoming().updatedAt == request.time
+        && (
+          isGuruOrAdmin() ||
+          (
+            isSignedIn() &&
+            existing().submitterUid == request.auth.uid &&
+            existing().status == 'Revisi' &&
+            incoming().status == 'Menunggu' &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'title', 'category', 'description', 'fileUrl', 'fileName',
+              'fileType', 'fileSize', 'externalLink', 'status', 'updatedAt'
+            ])
+          )
+        );
+      allow delete: if isValidId(submissionId) && isGuruOrAdmin();
+    }
+
+    // Public tracking code status projection (get-only, never listable)
+    match /submission_statuses/{trackingCode} {
+      allow get: if isValidId(trackingCode);
+      allow list: if false;
+      allow create: if isValidId(trackingCode)
+        && isValidSubmissionStatusShape(incoming())
+        && incoming().trackingCode == trackingCode
+        && incoming().status == 'Menunggu'
+        && incoming().score == null
+        && incoming().revisionNote == ''
+        && incoming().isPublished == false
+        && incoming().publishedWorkId == ''
+        && incoming().submittedAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(trackingCode) && isGuruOrAdmin()
+        && isValidSubmissionStatusShape(incoming())
+        && incoming().trackingCode == existing().trackingCode
+        && incoming().submittedAt == existing().submittedAt
+        && incoming().updatedAt == request.time;
+      allow delete: if isValidId(trackingCode) && isGuruOrAdmin();
+    }
+
+    // Published Works Gallery (Publicly viewable ONLY when isVisible == true)
+    match /published_works/{workId} {
+      allow get: if isValidId(workId) && (existing().isVisible == true || isGuruOrAdmin());
+      allow list: if existing().isVisible == true || isGuruOrAdmin();
+      allow create: if isValidId(workId) && isGuruOrAdmin() && isValidPublishedWork(incoming())
+        && incoming().publishedAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(workId) && isGuruOrAdmin() && isValidPublishedWork(incoming())
+        && incoming().publishedAt == existing().publishedAt
+        && incoming().updatedAt == request.time;
+      allow delete: if isValidId(workId) && isGuruOrAdmin();
+    }
+  }
+}
